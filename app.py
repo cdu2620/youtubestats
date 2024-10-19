@@ -18,7 +18,7 @@ def get_google_search():
     my_json = soup.decode('utf8').replace("'", '"')
     data = json.loads(my_json)
     for img in data["items"]:
-        imgs.add(img["link"])
+        imgs.append(img["link"])
     return imgs
 
 def duck_duck_go():
@@ -32,11 +32,11 @@ def duck_duck_go():
     results = search.get_dict()
     inline_images = results["inline_images"]
     for img in inline_images:
-        imgs.add(img["image"])
+        imgs.append(img["image"])
     return imgs
 
 def kpopping():
-    imgs = []
+    all_imgs = []
     url = "https://kpopping.com/kpics/gender-all/category-all/idol-RM/group-any/order"
     response = requests.get(url)
     html = response.content
@@ -45,12 +45,12 @@ def kpopping():
     soup = BeautifulSoup(html, "html.parser")
     imgs = soup.find_all("div", {"class": "cell"})
     for img in imgs:
-    children = img.findChildren("img")
-    for child in children:
-        child['src'] = child['src'].replace("300", "800")
-        url = "https://kpopping.com" + child['src'].split("?")[0]
-        imgs.add(url)
-    return imgs
+        children = img.findChildren("img")
+        for child in children:
+            child['src'] = child['src'].replace("300", "800")
+            url = "https://kpopping.com" + child['src'].split("?")[0]
+            all_imgs.append(url)
+    return all_imgs
 
 
 @app.route('/')
