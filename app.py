@@ -1,66 +1,89 @@
 from flask import Flask, render_template, redirect, url_for, request, session
-import requests
+import pandas as pd
+import datetime
+import pandas as pd
+from datetime import datetime
 import os
-import json
-from bs4 import BeautifulSoup
-from serpapi import GoogleSearch
-import random
+import secrets
+from googleapiclient.discovery import build
 
 app = Flask(__name__)
+UPLOAD_FOLDER = 'jsons'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'json'}
+app.secret_key = secrets.token_hex()
 
-def get_google_search():
-    imgs = []
-    url = "https://www.googleapis.com/customsearch/v1?key=AIzaSyDJSiDFD4sqNCFt680gAOsPfDbgI8Lxq9I&cx=0740ab079404c4f48&q=namjoon&searchType=image"
-    response = requests.get(url)
-    html = response.content
-    # Parse the HTML
-    soup = BeautifulSoup(html, "html.parser")
-    my_json = soup.decode('utf8').replace("'", '"')
-    data = json.loads(my_json)
-    for img in data["items"]:
-        imgs.append(img["link"])
-    return imgs
+def getInfo(videoIds):
+  channels = {}
+  tags = {}
+  youtube = build('youtube', 'v3', developerKey='AIzaSyA41op1Oc9MzPveNTil00QuqwxvgDqPOwY')
+  for videoId in videoIds:
+    try:
+      request = youtube.videos().list(part='snippet,topicDetails', id=videoId)
+      response = request.execute()
+      if "items" not in response:
+        continue
+      response = response["items"]
+      if 'snippet' in response[0]:
+        if 'channelTitle' in response[0]['snippet']:
+          channel = response[0]['snippet']['channelTitle']
+          if channel not in channels:
+            channels[channel] = 1
+          else:
+            channels[channel] += 1
+      if 'topicDetails' in response[0]:
+        if 'topicCategories' in response[0]['topicDetails']:
+          categories = response[0]['topicDetails']['topicCategories']
+          for category in categories:
+            if category not in tags: 
+              tags[category] = 1
+            else:
+              tags[category] += 1
+    except Exception:
+      return
+  return (channels, tags)
 
-def duck_duck_go():
-    imgs = []
-    params = {
-    "engine": "duckduckgo",
-    "q": "namjoon",
-    "api_key": "280be8e2dc88b7f74ea5e1e4c2f24ec73b141a25c5a55810ae776172e141da06"
-    }
-    search = GoogleSearch(params)
-    results = search.get_dict()
-    inline_images = results["inline_images"]
-    for img in inline_images:
-        imgs.append(img["image"])
-    return imgs
+def process(df):
+    filtered_history = df[df['details'].notnull() == False]
+    filtered_history["test"] = filtered_history['titleUrl'].apply(lambda x: x.split("watch")[-1])
+    filtered_history = filtered_history[filtered_history["test"].str[0] != "h"] 
+    filtered_history['time'] = pd.to_datetime(filtered_history['time'], format='mixed')
+    this_month = filtered_history.loc[(filtered_history['time'].dt.year == datetime.now().year-1)].head(100)
+    this_month['titleUrl'] = this_month['titleUrl'].apply(lambda x: x.split("=")[-1]) 
+    channelData, tagData = getInfo(this_month['titleUrl'].tolist())
+    return (sorted(channelData.items(), key=lambda x: x[1], reverse=True), sorted(tagData.items(), key=lambda x: x[1], reverse=True))
+   
 
-def kpopping():
-    all_imgs = []
-    url = "https://kpopping.com/kpics/gender-all/category-all/idol-RM/group-any/order"
-    response = requests.get(url)
-    html = response.content
-
-    # Parse the HTML
-    soup = BeautifulSoup(html, "html.parser")
-    imgs = soup.find_all("div", {"class": "cell"})
-    for img in imgs:
-        children = img.findChildren("img")
-        for child in children:
-            child['src'] = child['src'].replace("300", "800")
-            url = "https://kpopping.com" + child['src'].split("?")[0]
-            all_imgs.append(url)
-    return all_imgs
-
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
-def login():
-    all_imgs = []
-    google = get_google_search()
-    ddg = duck_duck_go()
-    kpop = kpopping()
-    all_imgs.extend(google)
-    all_imgs.extend(ddg)
-    all_imgs.extend(kpop)
-    index = random.randint(0, len(all_imgs)-1)
-    return render_template('index.html', namjoon=all_imgs[index])
+def home():
+    return render_template('index.html')
+
+@app.route('/success', methods = ['POST'])   
+def success():   
+    if request.method == 'POST':   
+        file = request.files['file']
+        # If the user does not select a file, the browser submits an
+        # empty file without a filename.
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = file.filename
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            session['uploaded_data_file_path'] = os.path.join(app.config['UPLOAD_FOLDER'],filename)
+            return render_template("data.html", name = filename) 
+    return render_template('index.html')
+
+@app.route('/show_data')
+def showData():
+    # Uploaded File Path
+    data_file_path = session.get('uploaded_data_file_path', None)
+    # read csv
+    uploaded_df = pd.read_json(data_file_path)
+    channels, tags = process(uploaded_df)
+    return render_template('show_data.html',
+                           channel=channels, tag=tags)
