@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import secrets
+import operator
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
@@ -48,10 +49,13 @@ def process(df):
     filtered_history["test"] = filtered_history['titleUrl'].apply(lambda x: x.split("watch")[-1])
     filtered_history = filtered_history[filtered_history["test"].str[0] != "h"] 
     filtered_history['time'] = pd.to_datetime(filtered_history['time'], format='mixed')
+    filtered_history_sort = filtered_history['titleUrl'].value_counts(ascending=False).reset_index()
+    topVids = filtered_history_sort['titleUrl'].head(100).tolist()[:5]
     this_month = filtered_history.loc[(filtered_history['time'].dt.year == datetime.now().year-1)].head(100)
     this_month['titleUrl'] = this_month['titleUrl'].apply(lambda x: x.split("=")[-1]) 
+    topVids[:] = ["https://youtube.com/embed/" + vid.split("=")[1] for vid in topVids]
     channelData, tagData = getInfo(this_month['titleUrl'].tolist())
-    return (sorted(channelData.items(), key=lambda x: x[1], reverse=True), sorted(tagData.items(), key=lambda x: x[1], reverse=True))
+    return (topVids, dict(sorted(channelData.items(), key=operator.itemgetter(1), reverse=True)[:5]), dict(sorted(tagData.items(), key=operator.itemgetter(1), reverse=True)[:5]))
    
 
 def allowed_file(filename):
@@ -84,6 +88,6 @@ def showData():
     data_file_path = session.get('uploaded_data_file_path', None)
     # read csv
     uploaded_df = pd.read_json(data_file_path)
-    channels, tags = process(uploaded_df)
+    topVids, channels, tags = process(uploaded_df)
     return render_template('show_data.html',
-                           channel=channels, tag=tags)
+                           vids=topVids, channel=channels, tag=tags)

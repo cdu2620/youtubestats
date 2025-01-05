@@ -5,7 +5,25 @@
   </head>
   <body>
     <br>
-<p>{{tag}}</p>
-<p>{{channel}}</p>
+    <p>Your top topics</p>
+    <ul>
+        {% for item in tag %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    <p>Your top channels</p>
+    <ul>
+        {% for item in channel %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    <p>Your most watched videos</p>
+    <ul>
+        {% for item in vids %}
+        <iframe width="420" height="315"
+        src={{item}}>
+        </iframe>
+        {% endfor %}
+    </ul>
     </body>
 </html>
