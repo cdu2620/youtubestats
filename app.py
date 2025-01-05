@@ -89,5 +89,6 @@ def showData():
     # read csv
     uploaded_df = pd.read_json(data_file_path)
     topVids, channels, tags = process(uploaded_df)
+    orderedTags = [key.split("/")[-1].replace("_", " ") for key in tags]
     return render_template('show_data.html',
-                           vids=topVids, channel=channels, tag=tags)
+                           vids=topVids, channel=channels, tag=orderedTags)
