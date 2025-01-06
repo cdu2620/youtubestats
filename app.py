@@ -1,8 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session
 import pandas as pd
-import datetime
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 import secrets
 import operator
@@ -25,6 +24,8 @@ def getInfo(videoIds):
       if "items" not in response:
         continue
       response = response["items"]
+      if len(response) == 0:
+        continue
       if 'snippet' in response[0]:
         if 'channelTitle' in response[0]['snippet']:
           channel = response[0]['snippet']['channelTitle']
@@ -44,17 +45,24 @@ def getInfo(videoIds):
       return
   return (channels, tags)
 
-def process(df):
+def is_within_year(dt, days):
+    if days == 100:
+        return True
+    today = datetime.now(timezone.utc)
+    ago = today - timedelta(days=days)
+    return ago <= dt <= today
+
+def process(df, time):
     filtered_history = df[df['details'].notnull() == False]
     filtered_history["test"] = filtered_history['titleUrl'].apply(lambda x: x.split("watch")[-1])
     filtered_history = filtered_history[filtered_history["test"].str[0] != "h"] 
     filtered_history['time'] = pd.to_datetime(filtered_history['time'], format='mixed')
+    filtered_history = filtered_history[filtered_history.apply(lambda row: is_within_year(row['time'], int(time)), axis=1)]
     filtered_history_sort = filtered_history['titleUrl'].value_counts(ascending=False).reset_index()
-    topVids = filtered_history_sort['titleUrl'].head(100).tolist()[:5]
-    this_month = filtered_history.loc[(filtered_history['time'].dt.year == datetime.now().year-1)].head(100)
-    this_month['titleUrl'] = this_month['titleUrl'].apply(lambda x: x.split("=")[-1]) 
+    topVids = filtered_history_sort['titleUrl'].head(5).tolist()
+    filtered_history['titleUrl'] = filtered_history['titleUrl'].apply(lambda x: x.split("=")[-1]) 
     topVids[:] = ["https://youtube.com/embed/" + vid.split("=")[1] for vid in topVids]
-    channelData, tagData = getInfo(this_month['titleUrl'].tolist())
+    channelData, tagData = getInfo(filtered_history['titleUrl'].tolist())
     return (topVids, dict(sorted(channelData.items(), key=operator.itemgetter(1), reverse=True)[:5]), dict(sorted(tagData.items(), key=operator.itemgetter(1), reverse=True)[:5]))
    
 
@@ -86,9 +94,10 @@ def success():
 def showData():
     # Uploaded File Path
     data_file_path = session.get('uploaded_data_file_path', None)
-    # read csv
+    # read json
+    time = request.args.get("time") 
     uploaded_df = pd.read_json(data_file_path)
-    topVids, channels, tags = process(uploaded_df)
+    topVids, channels, tags = process(uploaded_df, time)
     orderedTags = [key.split("/")[-1].replace("_", " ") for key in tags]
     return render_template('show_data.html',
                            vids=topVids, channel=channels, tag=orderedTags)

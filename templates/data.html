@@ -9,14 +9,20 @@
         <input type = "submit" value="Upload">  
     </form>
     <p> File uploaded successfully!! </p>
-  <form action="/show_data">
-        <input type="submit" value="Show past month"/>
-    </form>
-    <form action="/show_data">
-        <input type="submit" value="Show past year"/>
-    </form>
-    <form action="/show_data">
-        <input type="submit" value="Show all time"/>
-    </form>
+    <button id="1month">Last month</button>
+    <button id="1yr">Last year</button>
+    <button id="all">All time</button>
+
+    <script>
+        document.getElementById("1month").addEventListener("click", function() {
+            window.location.href = "/show_data?time=30";
+        });
+        document.getElementById("1yr").addEventListener("click", function() {
+            window.location.href = "/show_data?time=365";
+        });
+        document.getElementById("all").addEventListener("click", function() {
+            window.location.href = "/show_data?time=100";
+        });
+    </script>
 </body>  
 </html>
