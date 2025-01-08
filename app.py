@@ -42,12 +42,10 @@ def getInfo(videoIds):
             else:
               tags[category] += 1
     except Exception:
-      return
+      pass
   return (channels, tags)
 
 def is_within_year(dt, days):
-    if days == 100:
-        return True
     today = datetime.now(timezone.utc)
     ago = today - timedelta(days=days)
     return ago <= dt <= today
