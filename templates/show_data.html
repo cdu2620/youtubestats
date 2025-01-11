@@ -26,4 +26,7 @@
         {% endfor %}
     </ul>
     </body>
+    <footer>
+        <p><a href="{{ url_for('home', ao3user=session['username']) }}">Home</a></p>
+      </footer>
 </html>

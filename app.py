@@ -13,37 +13,42 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'json'}
 app.secret_key = secrets.token_hex()
 
-def getInfo(videoIds):
-  channels = {}
-  tags = {}
-  youtube = build('youtube', 'v3', developerKey='AIzaSyA41op1Oc9MzPveNTil00QuqwxvgDqPOwY')
-  for videoId in videoIds:
-    try:
-      request = youtube.videos().list(part='snippet,topicDetails', id=videoId)
-      response = request.execute()
-      if "items" not in response:
-        continue
-      response = response["items"]
-      if len(response) == 0:
-        continue
-      if 'snippet' in response[0]:
-        if 'channelTitle' in response[0]['snippet']:
-          channel = response[0]['snippet']['channelTitle']
-          if channel not in channels:
-            channels[channel] = 1
-          else:
-            channels[channel] += 1
-      if 'topicDetails' in response[0]:
-        if 'topicCategories' in response[0]['topicDetails']:
-          categories = response[0]['topicDetails']['topicCategories']
-          for category in categories:
-            if category not in tags: 
-              tags[category] = 1
-            else:
-              tags[category] += 1
-    except Exception:
-      pass
-  return (channels, tags)
+def getInfo(videoIds, time):
+    if time not in session:
+        channels = {}
+        tags = {}
+        youtube = build('youtube', 'v3', developerKey='AIzaSyA41op1Oc9MzPveNTil00QuqwxvgDqPOwY')
+        for videoId in videoIds:
+            try:
+                request = youtube.videos().list(part='snippet,topicDetails', id=videoId)
+                response = request.execute()
+                if "items" not in response:
+                    continue
+                response = response["items"]
+                if len(response) == 0:
+                    continue
+                if 'snippet' in response[0]:
+                    if 'channelTitle' in response[0]['snippet']:
+                        channel = response[0]['snippet']['channelTitle']
+                        if channel not in channels:
+                            channels[channel] = 1
+                        else:
+                            channels[channel] += 1
+                if 'topicDetails' in response[0]:
+                    if 'topicCategories' in response[0]['topicDetails']:
+                        categories = response[0]['topicDetails']['topicCategories']
+                        for category in categories:
+                            if category not in tags: 
+                                tags[category] = 1
+                            else:
+                                tags[category] += 1
+            except Exception:
+                pass
+        session[time] =  [channels, tags]
+    else:
+        channels = session[time][0]
+        tags = session[time][1]
+    return (channels, tags)
 
 def is_within_year(dt, days):
     today = datetime.now(timezone.utc)
@@ -60,7 +65,7 @@ def process(df, time):
     topVids = filtered_history_sort['titleUrl'].head(5).tolist()
     filtered_history['titleUrl'] = filtered_history['titleUrl'].apply(lambda x: x.split("=")[-1]) 
     topVids[:] = ["https://youtube.com/embed/" + vid.split("=")[1] for vid in topVids]
-    channelData, tagData = getInfo(filtered_history['titleUrl'].tolist())
+    channelData, tagData = getInfo(filtered_history['titleUrl'].tolist(), time)
     return (topVids, dict(sorted(channelData.items(), key=operator.itemgetter(1), reverse=True)[:5]), dict(sorted(tagData.items(), key=operator.itemgetter(1), reverse=True)[:5]))
    
 
@@ -72,7 +77,7 @@ def allowed_file(filename):
 def home():
     return render_template('index.html')
 
-@app.route('/success', methods = ['POST'])   
+@app.route('/success', methods = ['GET', 'POST'])   
 def success():   
     if request.method == 'POST':   
         file = request.files['file']
@@ -85,8 +90,8 @@ def success():
             filename = file.filename
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             session['uploaded_data_file_path'] = os.path.join(app.config['UPLOAD_FOLDER'],filename)
-            return render_template("data.html", name = filename) 
-    return render_template('index.html')
+            return render_template("data.html") 
+    return render_template("data.html") 
 
 @app.route('/show_data')
 def showData():
