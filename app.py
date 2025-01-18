@@ -97,7 +97,7 @@ def success():
     else:
         if session['years']:
             return render_template("data.html", years=session['years']) 
-    return render_template("data.html", years=session['years']) 
+    return render_template("data.html", years=[]) 
 
 @app.route('/show_data')
 def showData():
