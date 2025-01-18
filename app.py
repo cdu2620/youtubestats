@@ -92,7 +92,7 @@ def success():
             history['time'] = pd.to_datetime(history['time'], format='mixed')
             years = history['time'].dt.year
             unique_years = years.unique()
-            session['years'] = unique_years
+            session['years'] = unique_years.tolist()
             return render_template("data.html", years=unique_years) 
     else:
         if session['years']:
