@@ -92,8 +92,12 @@ def success():
             history['time'] = pd.to_datetime(history['time'], format='mixed')
             years = history['time'].dt.year
             unique_years = years.unique()
+            session['years'] = unique_years
             return render_template("data.html", years=unique_years) 
-    return render_template("data.html", years=[]) 
+    else:
+        if session['years']:
+            return render_template("data.html", years=session['years']) 
+    return render_template("data.html", years=session['years']) 
 
 @app.route('/show_data')
 def showData():
