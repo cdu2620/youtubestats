@@ -9,16 +9,28 @@
         <input type = "submit" value="Upload">  
     </form>
     <p> File uploaded successfully!! </p>
-    <button id="1month">Last month</button>
-    <button id="1yr">Last year</button>
+
+    {% for year in years %}
+    <button id={{year}} class="buttonYears">{{ year }}</button>
+    <br>
+{% endfor %}
+    <!-- <button id="1month">Last month</button>
+    <button id="1yr">Last year</button> -->
 
     <script>
-        document.getElementById("1month").addEventListener("click", function() {
-            window.location.href = "/show_data?time=30";
-        });
-        document.getElementById("1yr").addEventListener("click", function() {
-            window.location.href = "/show_data?time=365";
-        });
+        const btns = document.querySelectorAll('button')
+        btns.forEach(btn => {
+            btn.addEventListener('click', event => {
+                id = event.target.id;
+                window.location.href = "/show_data?time=" + id;
+                });
+                });
+        // document.getElementById("1month").addEventListener("click", function() {
+        //     window.location.href = "/show_data?time=30";
+        // });
+        // document.getElementById("1yr").addEventListener("click", function() {
+        //     window.location.href = "/show_data?time=365";
+        // });
     </script>
 </body>  
 </html>
