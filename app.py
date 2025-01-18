@@ -50,10 +50,8 @@ def getInfo(videoIds, time):
         tags = session[time][1]
     return (channels, tags)
 
-def is_within_year(dt, days):
-    today = datetime.now(timezone.utc)
-    ago = today - timedelta(days=days)
-    return ago <= dt <= today
+def is_within_year(dt, year):
+    return dt.year == year
 
 def process(df, time):
     filtered_history = df[df['details'].notnull() == False]
@@ -90,8 +88,12 @@ def success():
             filename = file.filename
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             session['uploaded_data_file_path'] = os.path.join(app.config['UPLOAD_FOLDER'],filename)
-            return render_template("data.html") 
-    return render_template("data.html") 
+            history = pd.read_json(session['uploaded_data_file_path'])
+            history['time'] = pd.to_datetime(history['time'], format='mixed')
+            years = history['time'].dt.year
+            unique_years = years.unique()
+            return render_template("data.html", years=unique_years) 
+    return render_template("data.html", years=[]) 
 
 @app.route('/show_data')
 def showData():
